@@ -3,7 +3,7 @@ mlp/src/cifar10/cifar-10-batches-py/*
 
 
 # Model files
-mlp/src/models/*
+mlp/models/*
 
 
 

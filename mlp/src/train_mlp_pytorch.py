@@ -23,6 +23,8 @@ LEARNING_RATE_DEFAULT = 2e-3
 MAX_STEPS_DEFAULT = 1500
 BATCH_SIZE_DEFAULT = 200
 EVAL_FREQ_DEFAULT = 100
+SGD_MOMENTUM_DEFAULT = 0
+SGD_WEIGHT_DECAY_DEFAULT = 0
 
 # Directory in which cifar data is saved
 DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
@@ -102,7 +104,8 @@ def train():
 
     criterion       = nn.CrossEntropyLoss()
     model           = MLP(w * h * d, dnn_hidden_units, n_classes).to(device)
-    optimizer       = torch.optim.SGD(model.parameters(), lr=FLAGS.learning_rate)
+    optimizer       = torch.optim.SGD(model.parameters(), lr=FLAGS.learning_rate, weight_decay=FLAGS.weight_decay,
+                                      momentum=FLAGS.momentum)
 
     train_losses    = []
     test_losses     = []
@@ -140,6 +143,12 @@ def train():
     # Save stuff
     filename = 'steps-{}_layers-{}_lr-{}_bs-{}'.format(FLAGS.max_steps, FLAGS.dnn_hidden_units,
                                                        FLAGS.learning_rate, FLAGS.batch_size)
+
+    if FLAGS.momentum != SGD_MOMENTUM_DEFAULT:
+        filename += '_SGDmomentum-{}'.format(FLAGS.momentum)
+
+    if FLAGS.weight_decay != SGD_WEIGHT_DECAY_DEFAULT:
+        filename += '_SGDweightDecay-{}'.format(FLAGS.weight_decay)
 
     filepath = '../models/{}'.format(filename)
     if not os.path.exists(filepath):
@@ -195,6 +204,11 @@ if __name__ == '__main__':
                         help='Frequency of evaluation on the test set')
     parser.add_argument('--data_dir', type=str, default=DATA_DIR_DEFAULT,
                         help='Directory for storing input data')
+    parser.add_argument('--weight_decay', type=str, default=SGD_WEIGHT_DECAY_DEFAULT,
+                        help='SGD Weight decay')
+    parser.add_argument('--momentum', type=str, default=SGD_MOMENTUM_DEFAULT,
+                        help='SGD Momentum')
+
     FLAGS, unparsed = parser.parse_known_args()
 
     main()
