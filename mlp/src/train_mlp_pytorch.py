@@ -94,7 +94,7 @@ def train():
 
     # Preparation for training
     print('- Init parameters')
-    device        = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device          = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     data            = cifar10_utils.get_cifar10(FLAGS.data_dir)
     train_data      = data['train']
@@ -154,15 +154,15 @@ def train():
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
-    torch.save(model.state_dict(), '{}/model_{}.pt'.format(filepath, filename))
+    torch.save(model, '{}/model.pt'.format(filepath))
 
-    with open('{}/train_loss_{}'.format(filepath, filename), 'wb+') as f:
+    with open('{}/train_loss'.format(filepath), 'wb+') as f:
         pickle.dump(train_losses, f)
 
-    with open('{}/test_loss_{}'.format(filepath, filename), 'wb+') as f:
+    with open('{}/test_loss'.format(filepath), 'wb+') as f:
         pickle.dump(test_losses, f)
 
-    with open('{}/accuracies_{}'.format(filepath, filename), 'wb+') as f:
+    with open('{}/accuracies'.format(filepath), 'wb+') as f:
         pickle.dump(test_accuracies, f)
 
     print(test_accuracies[-1])
