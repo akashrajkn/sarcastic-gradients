@@ -119,7 +119,7 @@ def train():
         loss.backward()
         optimizer.step()
 
-        train_losses.append(loss.data[0].cpu().numpy())
+        train_losses.append(loss.data[0].item())#.cpu().numpy())
 
 
         if (step % FLAGS.eval_freq == 0) or (step == FLAGS.max_steps - 1):
@@ -130,8 +130,8 @@ def train():
             loss_test = criterion(out_test, test_labels.argmax(dim=1))
             acc       = accuracy(out_test, test_labels)
 
-            test_losses.append(loss_test.data[0].cpu().numpy())
-            test_accuracies.append(acc.cpu().numpy())
+            test_losses.append(loss_test.data[0].item())#.cpu().numpy())
+            test_accuracies.append(acc.item())#.numpy())
 
         # if step % 10 == 0:
         #     print('   Step: {}, Train Loss: {}'.format(str(step), str(loss.data[0])))
