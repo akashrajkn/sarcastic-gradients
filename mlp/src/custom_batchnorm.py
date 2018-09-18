@@ -8,79 +8,52 @@ In contrast to more advanced implementations no use of a running mean/variance i
 You should fill in code into indicated sections.
 """
 
+
 ######################################################################################
 # Code for Question 3.1
 ######################################################################################
 
 class CustomBatchNormAutograd(nn.Module):
-  """
-  This nn.module implements a custom version of the batch norm operation for MLPs.
-  The operations called in self.forward track the history if the input tensors have the
-  flag requires_grad set to True. The backward pass does not need to be implemented, it
-  is dealt with by the automatic differentiation provided by PyTorch.
-  """
-
-  def __init__(self, n_neurons, eps=1e-5):
     """
-    Initializes CustomBatchNormAutograd object.
-
-    Args:
-      n_neurons: int specifying the number of neurons
-      eps: small float to be added to the variance for stability
-
-    TODO:
-      Save parameters for the number of neurons and eps.
-      Initialize parameters gamma and beta via nn.Parameter
-    """
-    super(CustomBatchNormAutograd, self).__init__()
-
-    ########################
-    # PUT YOUR CODE HERE  #
-    #######################
-
-    self.n_neurons = n_neurons
-    self.eps = eps
-
-    self.gamma = nn.Parameter(torch.ones(n_neurons))
-    self.beta = nn.Parameter(torch.zeros(n_neurons))
-
-    ########################
-    # END OF YOUR CODE    #
-    #######################
-
-  def forward(self, input):
-    """
-    Compute the batch normalization
-
-    Args:
-      input: input tensor of shape (n_batch, n_neurons)
-    Returns:
-      out: batch-normalized tensor
-
-    TODO:
-      Check for the correctness of the shape of the input tensor.
-      Implement batch normalization forward pass as given in the assignment.
-      For the case that you make use of torch.var be aware that the flag unbiased=False should be set.
+    This nn.module implements a custom version of the batch norm operation for MLPs.
+    The operations called in self.forward track the history if the input tensors have the
+    flag requires_grad set to True. The backward pass does not need to be implemented, it
+    is dealt with by the automatic differentiation provided by PyTorch.
     """
 
-    ########################
-    # PUT YOUR CODE HERE  #
-    #######################
+    def __init__(self, n_neurons, eps=1e-5):
+        """
+        Initializes CustomBatchNormAutograd object.
 
-    assert input.shape[1] == self.n_neurons, "Input has incorrect shape"
+        Args:
+          n_neurons: int specifying the number of neurons
+          eps: small float to be added to the variance for stability
+        """
+        super(CustomBatchNormAutograd, self).__init__()
 
-    mu = torch.mean(input, 0)
-    var = torch.var(input, dim=0, unbiased=False)
+        self.n_neurons = n_neurons
+        self.eps       = eps
 
-    x_hat = (input - mu) / ((var + self.eps)**(0.5))
-    out = x_hat * self.gamma + self.beta
+        self.gamma     = nn.Parameter(torch.ones(n_neurons))
+        self.beta      = nn.Parameter(torch.zeros(n_neurons))
 
-    ########################
-    # END OF YOUR CODE    #
-    #######################
+    def forward(self, input):
+        """
+        Compute the batch normalization
 
-    return out
+        Args:
+          input: input tensor of shape (n_batch, n_neurons)
+        Returns:
+          out: batch-normalized tensor
+        """
+        assert input.shape[1] == self.n_neurons, "Input has incorrect shape"
 
+        mu  = torch.mean(input, 0)
+        var = torch.var(input, dim=0, unbiased=False)
+        x   = (input - mu) / ((var + self.eps) ** (0.5))
+        out = x * self.gamma + self.beta
+
+        return out
 
 
 ######################################################################################
@@ -89,104 +62,63 @@ class CustomBatchNormAutograd(nn.Module):
 
 
 class CustomBatchNormManualFunction(torch.autograd.Function):
-  """
-  This torch.autograd.Function implements a functional custom version of the batch norm operation for MLPs.
-  Using torch.autograd.Function allows you to write a custom backward function.
-  The function will be called from the nn.Module CustomBatchNormManualModule
-  Inside forward the tensors are (automatically) not recorded for automatic differentiation since the backward
-  pass is done via the backward method.
-  The forward pass is not called directly but via the apply() method. This makes sure that the context objects
-  are dealt with correctly. Example:
-    my_bn_fct = CustomBatchNormManualFunction()
-    normalized = fct.apply(input, gamma, beta, eps)
-  """
-
-  @staticmethod
-  def forward(ctx, input, gamma, beta, eps=1e-5):
     """
-    Compute the batch normalization
-
-    Args:
-      ctx: context object handling storing and retrival of tensors and constants and specifying
-           whether tensors need gradients in backward pass
-      input: input tensor of shape (n_batch, n_neurons)
-      gamma: variance scaling tensor, applied per neuron, shpae (n_neurons)
-      beta: mean bias tensor, applied per neuron, shpae (n_neurons)
-      eps: small float added to the variance for stability
-    Returns:
-      out: batch-normalized tensor
-
-    TODO:
-      Implement the forward pass of batch normalization
-      Store constant non-tensor objects via ctx.constant=myconstant
-      Store tensors which you need in the backward pass via ctx.save_for_backward(tensor1, tensor2, ...)
-      Intermediate results can be decided to be either recomputed in the backward pass or to be stored
-      for the backward pass. Do not store tensors which are unnecessary for the backward pass to save memory!
-      For the case that you make use of torch.var be aware that the flag unbiased=False should be set.
+    This torch.autograd.Function implements a functional custom version of the batch norm operation for MLPs.
+    Using torch.autograd.Function allows you to write a custom backward function.
+    The function will be called from the nn.Module CustomBatchNormManualModule
+    Inside forward the tensors are (automatically) not recorded for automatic differentiation since the backward
+    pass is done via the backward method.
+    The forward pass is not called directly but via the apply() method. This makes sure that the context objects
+    are dealt with correctly. Example:
+      my_bn_fct = CustomBatchNormManualFunction()
+      normalized = fct.apply(input, gamma, beta, eps)
     """
 
-    ########################
-    # PUT YOUR CODE HERE  #
-    #######################
+    @staticmethod
+    def forward(ctx, input, gamma, beta, eps=1e-5):
+        """
+        Compute the batch normalization
 
-    mu = torch.mean(input, 0)
-    var = torch.var(input, dim=0, unbiased=False)
+        Args:
+          ctx: context object handling storing and retrival of tensors and constants and specifying
+               whether tensors need gradients in backward pass
+          input: input tensor of shape (n_batch, n_neurons)
+          gamma: variance scaling tensor, applied per neuron, shpae (n_neurons)
+          beta: mean bias tensor, applied per neuron, shpae (n_neurons)
+          eps: small float added to the variance for stability
+        Returns:
+          out: batch-normalized tensor
+        """
+        mu    = torch.mean(input, 0)
+        var   = torch.var(input, dim=0, unbiased=False)
+        x_hat = (input - mu) / ((var + eps) ** (0.5))
+        out   = x_hat * gamma + beta
 
-    x_hat = (input - mu) / ((var + eps)**(0.5))
-    y = x_hat * gamma + beta
+        ctx.save_for_backward(input, x_hat, out, gamma, beta, mu, var)
 
-    ctx.eps = eps
-    ctx.save_for_backward(input, x_hat, y, gamma, beta, mu, var)
+        return out
 
-    out = y
+    @staticmethod
+    def backward(ctx, grad_output):
+        """
+        Compute backward pass of the batch normalization.
 
-    ########################
-    # END OF YOUR CODE    #
-    #######################
+        Args:
+          ctx: context object handling storing and retrival of tensors and constants and specifying
+               whether tensors need gradients in backward pass
+        Returns:
+          out: tuple containing gradients for all input arguments
+        """
+        x, x_hat, y, gamma, beta, mu, var = ctx.saved_tensors
 
-    return out
+        grad_gamma = torch.sum(grad_output * x_hat, 0) if ctx.needs_input_grad[1] else None
+        grad_beta  = torch.sum(grad_output, 0)         if ctx.needs_input_grad[2] else None
+        grad_input = (gamma * (1 / torch.sqrt(var)) / x.shape[0]) * \
+                     (x.shape[0] * grad_output - x_hat * grad_gamma - grad_beta) \
+                                                       if ctx.needs_input_grad[0] else None
 
-
-  @staticmethod
-  def backward(ctx, grad_output):
-    """
-    Compute backward pass of the batch normalization.
-
-    Args:
-      ctx: context object handling storing and retrival of tensors and constants and specifying
-           whether tensors need gradients in backward pass
-    Returns:
-      out: tuple containing gradients for all input arguments
-
-    TODO:
-      Retrieve saved tensors and constants via ctx.saved_tensors and ctx.constant
-      Compute gradients for inputs where ctx.needs_input_grad[idx] is True. Set gradients for other
-      inputs to None. This should be decided dynamically.
-    """
-
-    ########################
-    # PUT YOUR CODE HERE  #
-    #######################
-
-    eps = ctx.eps
-    input, x_hat, y, gamma, beta, mu, var = ctx.saved_tensors
-
-    if ctx.needs_input_grad[1] == True:
-      grad_gamma = torch.sum(grad_output * x_hat, 0)
-
-    if ctx.needs_input_grad[2] == True:
-      grad_beta = torch.sum(grad_output, 0)
-
-    if ctx.needs_input_grad[0] == True:
-      grad_input = (gamma * (1 / torch.sqrt(var)) / input.shape[0]) * (input.shape[0] * grad_output - x_hat * grad_gamma - grad_beta)
-
-    ########################
-    # END OF YOUR CODE    #
-    #######################
-
-    # return gradients of the three tensor inputs and None for the constant eps
-    return grad_input, grad_gamma, grad_beta, None
-
+        # return gradients of the three tensor inputs and None for the constant eps
+        return grad_input, grad_gamma, grad_beta, None
 
 
 ######################################################################################
@@ -194,66 +126,38 @@ class CustomBatchNormManualFunction(torch.autograd.Function):
 ######################################################################################
 
 class CustomBatchNormManualModule(nn.Module):
-  """
-  This nn.module implements a custom version of the batch norm operation for MLPs.
-  In self.forward the functional version CustomBatchNormManualFunction.forward is called.
-  The automatic differentiation of PyTorch calls the backward method of this function in the backward pass.
-  """
-
-  def __init__(self, n_neurons, eps=1e-5):
     """
-    Initializes CustomBatchNormManualModule object.
-
-    Args:
-      n_neurons: int specifying the number of neurons
-      eps: small float to be added to the variance for stability
-
-    TODO:
-      Save parameters for the number of neurons and eps.
-      Initialize parameters gamma and beta via nn.Parameter
-    """
-    super(CustomBatchNormManualModule, self).__init__()
-
-    ########################
-    # PUT YOUR CODE HERE  #
-    #######################
-
-    self.n_neurons = n_neurons
-    self.eps = eps
-
-    self.gamma = nn.Parameter(torch.ones(n_neurons))
-    self.beta = nn.Parameter(torch.zeros(n_neurons))
-
-    ########################
-    # END OF YOUR CODE    #
-    #######################
-
-  def forward(self, input):
-    """
-    Compute the batch normalization via CustomBatchNormManualFunction
-
-    Args:
-      input: input tensor of shape (n_batch, n_neurons)
-    Returns:
-      out: batch-normalized tensor
-
-    TODO:
-      Check for the correctness of the shape of the input tensor.
-      Instantiate a CustomBatchNormManualFunction.
-      Call it via its .apply() method.
+    This nn.module implements a custom version of the batch norm operation for MLPs.
+    In self.forward the functional version CustomBatchNormManualFunction.forward is called.
+    The automatic differentiation of PyTorch calls the backward method of this function in the backward pass.
     """
 
-    ########################
-    # PUT YOUR CODE HERE  #
-    #######################
+    def __init__(self, n_neurons, eps=1e-5):
+        """
+        Initializes CustomBatchNormManualModule object.
 
-    assert input.shape[1] == self.n_neurons, "Input has incorrect shape"
+        Args:
+          n_neurons: int specifying the number of neurons
+          eps: small float to be added to the variance for stability
+        """
+        super(CustomBatchNormManualModule, self).__init__()
 
-    custom_batch_norm_manual_function = CustomBatchNormManualFunction()
-    out = custom_batch_norm_manual_function.apply(input, self.gamma, self.beta, self.eps)
+        self.n_neurons = n_neurons
+        self.eps       = eps
+        self.gamma     = nn.Parameter(torch.ones(self.n_neurons))
+        self.beta      = nn.Parameter(torch.zeros(self.n_neurons))
 
-    ########################
-    # END OF YOUR CODE    #
-    #######################
+    def forward(self, input):
+        """
+        Compute the batch normalization via CustomBatchNormManualFunction
 
-    return out
+        Args:
+          input: input tensor of shape (n_batch, n_neurons)
+        Returns:
+          out: batch-normalized tensor
+        """
+        assert input.shape[1] == self.n_neurons, "Input has incorrect shape"
+
+        out = CustomBatchNormManualFunction().apply(input, self.gamma, self.beta, self.eps)
+
+        return out
