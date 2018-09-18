@@ -48,7 +48,7 @@ class MLP(nn.Module):
         self.n_inputs  = n_inputs
         self.n_classes = n_classes
         self.relu      = nn.ReLU()
-        self.softmax  = nn.Softmax()
+        self.softmax   = nn.Softmax()
 
     def forward(self, x):
         """
