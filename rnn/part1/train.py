@@ -1,8 +1,8 @@
 ################################################################################
 # MIT License
-# 
+#
 # Copyright (c) 2018
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -24,11 +24,12 @@ from datetime import datetime
 import numpy as np
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from part1.dataset import PalindromeDataset
-from part1.vanilla_rnn import VanillaRNN
-from part1.lstm import LSTM
+from dataset import PalindromeDataset
+from vanilla_rnn import VanillaRNN
+from lstm import LSTM
 
 # You may want to look into tensorboardX for logging
 # from tensorboardX import SummaryWriter
@@ -40,18 +41,22 @@ def train(config):
     assert config.model_type in ('RNN', 'LSTM')
 
     # Initialize the device which to run the model on
-    device = torch.device(config.device)
+    device      = torch.device(config.device)
 
     # Initialize the model that we are going to use
-    model = None  # fixme
+    if config.model_type == 'RNN':
+        model = VanillaRNN(config.input_length, config.input_dim, config.num_hidden,
+                           config.num_classes, config.batch_size, device)
+    elif config.model_type == 'LSTM':
+        pass
 
     # Initialize the dataset and data loader (note the +1)
-    dataset = PalindromeDataset(config.input_length+1)
+    dataset     = PalindromeDataset(config.input_length+1)
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
 
     # Setup the loss and optimizer
-    criterion = None  # fixme
-    optimizer = None  # fixme
+    criterion   = nn.CrossEntropyLoss()
+    optimizer   = torch.optim.RMSprop(model.parameters())
 
     for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
@@ -59,6 +64,15 @@ def train(config):
         t1 = time.time()
 
         # Add more code here ...
+        optimizer.zero_grad()
+
+        out      = model(batch_inputs)
+        loss     = criterion(out.t(), batch_targets)
+        preds    = torch.argmax(nn.functional.softmax(out, dim=0), dim=0)
+        accuracy = (preds == batch_targets).sum().item() / len(preds)
+
+        loss.backward()
+        optimizer.step()
 
         ############################################################################
         # QUESTION: what happens here and why?
@@ -66,14 +80,9 @@ def train(config):
         torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=config.max_norm)
         ############################################################################
 
-        # Add more code here ...
-
-        loss = np.inf   # fixme
-        accuracy = 0.0  # fixme
-
         # Just for time measurement
         t2 = time.time()
-        examples_per_second = config.batch_size/float(t2-t1)
+        examples_per_second = config.batch_size / float(t2 - t1)
 
         if step % 10 == 0:
 
