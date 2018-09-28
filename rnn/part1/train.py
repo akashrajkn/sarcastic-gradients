@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import argparse
 import time
+import pickle
 from datetime import datetime
 import numpy as np
 
@@ -57,6 +58,7 @@ def train(config):
     # Setup the loss and optimizer
     criterion   = nn.CrossEntropyLoss()
     optimizer   = torch.optim.RMSprop(model.parameters())
+    accuracy    = 0
 
     for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
@@ -97,6 +99,14 @@ def train(config):
             # If you receive a PyTorch data-loader error, check this bug report:
             # https://github.com/pytorch/pytorch/pull/9655
             break
+
+
+    results = '{}, {}, {}, {}, {}, {}, {}\n'.format(config.input_length, config.input_dim, config.num_hidden, config.batch_size,
+                                                    config.learning_rate, config.train_steps, accuracy)
+
+    with open('./results/RNN_results.csv', 'a') as f:
+        f.write(results)
+
 
     print('Done training.')
 

@@ -1,0 +1,1 @@
+input_length, input_dim, num_hidden, batch_size, learning_rate, train_steps, accuracy
