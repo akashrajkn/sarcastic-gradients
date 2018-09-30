@@ -50,4 +50,4 @@ class VanillaRNN(nn.Module):
             x_t = x[t, :].view(self.input_dim, self.batch_size)
             h_t = torch.tanh(torch.matmul(self.W_hx, x_t) + torch.matmul(self.W_hh, h_t) + self.b_h)
 
-        return torch.matmul(self.W_ph, h_t) + self.b_p
+        return (torch.matmul(self.W_ph, h_t) + self.b_p).t()

@@ -49,7 +49,8 @@ def train(config):
         model = VanillaRNN(config.input_length, config.input_dim, config.num_hidden,
                            config.num_classes, config.batch_size, device)
     elif config.model_type == 'LSTM':
-        pass
+        model = LSTM(config.input_length, config.input_dim, config.num_hidden,
+                     config.num_classes, config.batch_size, device)
 
     # Initialize the dataset and data loader (note the +1)
     dataset     = PalindromeDataset(config.input_length+1)
@@ -69,8 +70,11 @@ def train(config):
         optimizer.zero_grad()
 
         out      = model(batch_inputs)
-        loss     = criterion(out.t(), batch_targets)
-        preds    = torch.argmax(nn.functional.softmax(out, dim=0), dim=0)
+        loss     = criterion(out, batch_targets)
+        # preds    = torch.argmax(nn.functional.softmax(out, dim=0), dim=0)
+        # accuracy = (preds == batch_targets).sum().item() / len(preds)
+
+        preds    = torch.argmax(nn.functional.softmax(out, dim=1), dim=1)
         accuracy = (preds == batch_targets).sum().item() / len(preds)
 
         loss.backward()
@@ -104,7 +108,7 @@ def train(config):
     results = '{}, {}, {}, {}, {}, {}, {}\n'.format(config.input_length, config.input_dim, config.num_hidden, config.batch_size,
                                                     config.learning_rate, config.train_steps, accuracy)
 
-    with open('./results/RNN_results.csv', 'a') as f:
+    with open('./results/{}_results.csv'.format(config.model_type), 'a') as f:
         f.write(results)
 
 
