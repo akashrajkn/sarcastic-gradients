@@ -97,7 +97,7 @@ def train(config):
     abs_path = os.path.abspath(config.txt_file)
     dataset = TextDataset(abs_path, config.seq_length)
 
-    with open('./assets/dataset.pkl', 'wb+') as f:
+    with open('./assets/dataset_seinfeld.pkl', 'wb+') as f:
         pickle.dump(dataset, f)
 
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
@@ -167,7 +167,7 @@ def train(config):
                 ))
 
             if step % 1000 == 0:
-                torch.save(model, './models/grimms.pt')
+                torch.save(model, './models/seinfeld.pt')
 
                 with open('./results/losses', 'wb+') as f:
                     pickle.dump(losses, f)
@@ -179,7 +179,7 @@ def train(config):
         text = sample_model(model=model, vocab_size=dataset.vocab_size, device=device, temp=1)
         generated = string_from_one_hot(text, dataset)
 
-        with open('./results/generated-1.txt', 'a') as f:
+        with open('./results/generated-1-seinfeld.txt', 'a') as f:
             f.write('epoch: {} - '.format(epoch) + generated)
 
 
