@@ -67,3 +67,6 @@ def sample_sentence(model, vocabulary_size, hidden_states=None, device=torch.dev
                                          hidden_states=hidden_states, seq_len=seq_len-1, previous=current)
 
     return torch.cat([current, predicted], dim=1)
+
+def get_accuracy(labels, preds):
+    return (labels == preds).sum().item() / reduce(lambda x, y: x*y, labels.size())

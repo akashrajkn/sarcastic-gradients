@@ -34,7 +34,7 @@ from functools import reduce
 from dataset import TextDataset
 from model import TextGenerationModel
 
-from utils import one_hot_encoding, sample_output, string_from_one_hot, sample_sentence
+from utils import one_hot_encoding, sample_output, string_from_one_hot, sample_sentence, get_accuracy
 
 ################################################################################
 
@@ -68,7 +68,7 @@ def train(config):
             out, _   = model(x_inp)
             loss     = criterion(out.transpose(2, 1), labels)
             preds    = torch.argmax(nn.functional.softmax(out, dim=2), dim=2)
-            accuracy = (labels == preds).sum().item() / reduce(lambda x,y: x*y, labels.size())
+            accuracy = get_accuracy(labels, preds)
 
             model.zero_grad()
             loss.backward()
