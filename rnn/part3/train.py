@@ -167,7 +167,7 @@ def train(config):
                 ))
 
             if step % 1000 == 0:
-                torch.save(model, './models/seinfeld_step_{}.pt'.format(step))
+                torch.save(model, './models/grimms.pt')
 
                 with open('./results/losses', 'wb+') as f:
                     pickle.dump(losses, f)
