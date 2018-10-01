@@ -98,7 +98,8 @@ def train(config):
                     pickle.dump(losses, f)
                 with open('./results/accuracies', 'wb+') as f:
                     pickle.dump(accuracies, f)
-            break
+            if step == 2:
+                break
 
         print(' *** End of epoch ***')
         text = sample_sentence(model=model, vocabulary_size=dataset.vocab_size, device=device, temperature=1)

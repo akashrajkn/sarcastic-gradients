@@ -25,7 +25,7 @@ def sample_output(out, temperature=1.0):
     '''
 
     out    = nn.functional.softmax(out, dim=1)
-    sample = torch.log(output) / temperature
+    sample = torch.log(out) / temperature
     sample = torch.exp(sample) / (torch.exp(sample).sum())
 
     return torch.multinomial(sample, 1)
@@ -60,10 +60,10 @@ def sample_sentence(model, vocabulary_size, hidden_states=None, device=torch.dev
     if previous is None:
         previous = one_hot_encoding(torch.empty(1, 1).random_(0, vocabulary_size - 1).type(torch.long), vocabulary_size).to(device)
 
-    output, hidden_states = model(previous, hidden_states)
-    output                = output[:, -1, :]
-    next_char             = one_hot_encoding(sample_output(output, temperature=temperature), vocabulary_size)
-    next_char             = sample_sentence(model=model, vocabulary_size=vocabulary_size, temperature=temperature,
-                                         hidden_states=hidden_states, seq_len=seq_len-1, previous=next_char)
+    out, hidden_states = model(previous, hidden_states)
+    out                = out[:, -1, :]
+    current            = one_hot_encoding(sample_output(out, temperature=temperature), vocabulary_size)
+    predicted          = sample_sentence(model=model, vocabulary_size=vocabulary_size, temperature=temperature,
+                                         hidden_states=hidden_states, seq_len=seq_len-1, previous=current)
 
-    return torch.cat([next_char, next_char], dim=1)
+    return torch.cat([current, predicted], dim=1)
