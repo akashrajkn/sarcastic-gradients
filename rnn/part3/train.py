@@ -175,6 +175,14 @@ def train(config):
                 with open('./results/accuracies', 'wb+') as f:
                     pickle.dump(accuracies, f)
 
+        print(' *** End of epoch ***')
+        text = sample_model(model=model, vocab_size=dataset.vocab_size, device=device, temp=1)
+        generated = string_from_one_hot(text, dataset)
+
+        with open('./results/generated-1.txt', 'a') as f:
+            f.write('epoch: {} - '.format(epoch) + generated)
+
+
     print('Save final model')
     torch.save(model, './models/final_model.pt')
     with open('./results/losses', 'wb+') as f:
@@ -227,17 +235,17 @@ if __name__ == "__main__":
     print('Train model')
     train(config)
 
-    print("-"*20)
-    print('generate Sentences')
-
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model = torch.load('./models/final_model.pt')
-
-    with open('./assets/dataset.pkl', 'rb') as f:
-        dataset = pickle.load(f)
-
-    text = sample_model(model=model, vocab_size=dataset.vocab_size=, device=device, temp=1)
-    generated = string_from_one_hot(text, dataset)
-
-    with open('./results/generated.txt', 'a') as f:
-        f.write(generated)
+    # print("-"*20)
+    # print('generate Sentences')
+    #
+    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # model = torch.load('./models/final_model.pt')
+    #
+    # with open('./assets/dataset.pkl', 'rb') as f:
+    #     dataset = pickle.load(f)
+    #
+    # text = sample_model(model=model, vocab_size=dataset.vocab_size=, device=device, temp=1)
+    # generated = string_from_one_hot(text, dataset)
+    #
+    # with open('./results/generated.txt', 'a') as f:
+    #     f.write(generated)
