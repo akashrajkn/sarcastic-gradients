@@ -2,7 +2,7 @@
 .idea/*
 
 
-*.pt
+#*.pt
 
 # Data files
 mlp/src/cifar10/cifar-10-batches-py/*
