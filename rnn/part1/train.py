@@ -119,7 +119,7 @@ def train(config):
     with open('./results/{}_losses_{}'.format(config.model_type, config.learning_rate), 'wb+') as f:
         pickle.dump(losses, f)
 
-    with open('./results/{}_accuracies'.format(config.model_type, config.learning_rate), 'wb+') as f:
+    with open('./results/{}_accuracies_{}'.format(config.model_type, config.learning_rate), 'wb+') as f:
         pickle.dump(accuracies, f)
 
     print('Done training.')
