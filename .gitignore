@@ -1,6 +1,9 @@
 # Pycharm files
 .idea/*
 
+
+*.pt
+
 # Data files
 mlp/src/cifar10/cifar-10-batches-py/*
 
