@@ -59,6 +59,9 @@ def train(config):
     # Setup the loss and optimizer
     criterion   = nn.CrossEntropyLoss()
     optimizer   = torch.optim.RMSprop(model.parameters())
+
+    losses      = []
+    accuracies  = []
     accuracy    = 0
 
     for step, (batch_inputs, batch_targets) in enumerate(data_loader):
@@ -73,7 +76,6 @@ def train(config):
         loss     = criterion(out, batch_targets)
         # preds    = torch.argmax(nn.functional.softmax(out, dim=0), dim=0)
         # accuracy = (preds == batch_targets).sum().item() / len(preds)
-
         preds    = torch.argmax(nn.functional.softmax(out, dim=1), dim=1)
         accuracy = (preds == batch_targets).sum().item() / len(preds)
 
@@ -81,10 +83,13 @@ def train(config):
         optimizer.step()
 
         ############################################################################
-        # QUESTION: what happens here and why?
+        # QUESTION: what happens here and why? - explained in the report
         ############################################################################
         torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=config.max_norm)
         ############################################################################
+
+        losses.append(loss.cpu().item())
+        accuracies.append(accuracy)
 
         # Just for time measurement
         t2 = time.time()
@@ -111,6 +116,11 @@ def train(config):
     with open('./results/{}_results.csv'.format(config.model_type), 'a') as f:
         f.write(results)
 
+    with open('./results/{}_losses_{}'.format(config.model_type, config.learning_rate), 'wb+') as f:
+        pickle.dump(losses, f)
+
+    with open('./results/{}_accuracies'.format(config.model_type, config.learning_rate), 'wb+') as f:
+        pickle.dump(accuracies, f)
 
     print('Done training.')
 

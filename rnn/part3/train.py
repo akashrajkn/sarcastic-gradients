@@ -244,7 +244,7 @@ if __name__ == "__main__":
     # with open('./assets/dataset.pkl', 'rb') as f:
     #     dataset = pickle.load(f)
     #
-    # text = sample_model(model=model, vocab_size=dataset.vocab_size=, device=device, temp=1)
+    # text = sample_model(model=model, vocab_size=dataset.vocab_size, device=device, temp=1)
     # generated = string_from_one_hot(text, dataset)
     #
     # with open('./results/generated.txt', 'a') as f:
