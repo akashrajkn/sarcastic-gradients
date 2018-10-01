@@ -5,12 +5,13 @@ from torch.utils.data import DataLoader
 from functools import reduce
 
 
-def one_hot(batch, vocab_size):
+def one_hot_encoding(x_batch, vocab_size):
+    '''
+    Returns the one hot encoding of x_batch
+    '''
+    X = torch.zeros(x_batch.shape[0], x_batch.shape[1], vocab_size, device=x_batch.device)
 
-    X = torch.zeros(batch.shape[0], batch.shape[1], vocab_size, device=batch.device)
-    X.scatter_(2, batch[:,:,None], 1)
-
-    return X
+    return X.scatter_(2, x_batch[:,:,None], 1)
 
 
 def sample_output(out, temperature=1.0):
@@ -23,7 +24,7 @@ def sample_output(out, temperature=1.0):
         @sample
     '''
 
-    out   = nn.functional.softmax(out, dim=1)
+    out    = nn.functional.softmax(out, dim=1)
     sample = torch.log(output) / temperature
     sample = torch.exp(sample) / (torch.exp(sample).sum())
 
@@ -33,6 +34,36 @@ def sample_output(out, temperature=1.0):
 def string_from_one_hot(sequence, dataset):
     '''
     Converts 1-hot encoding to string
+    Args:
+        @sequence
+        @dataset : TextDataset object
+    Return:
+        @string
     '''
-    char_idxs = sequence.argmax(dim=2).squeeze_(0).cpu().numpy()
-    return dataset.convert_to_string(char_idxs)
+    return dataset.convert_to_string(sequence.argmax(dim=2).squeeze_(0).cpu().numpy())
+
+
+def sample_sentence(model, vocabulary_size, hidden_states=None, device=torch.device('cpu'), temperature=1.0, seq_len=30, previous=None):
+    '''
+    Samples a sentence from the model
+    Args:
+        @model          : LSTM model
+        @vocabulary_size
+        @temperature           : temperature setting
+        @hidden_states
+        @seq_len        : number of characters to generate
+        @previous      : predicted char
+    '''
+    if seq_len == 0:
+        return previous
+
+    if previous is None:
+        previous = one_hot_encoding(torch.empty(1, 1).random_(0, vocabulary_size - 1).type(torch.long), vocabulary_size).to(device)
+
+    output, hidden_states = model(previous, hidden_states)
+    output                = output[:, -1, :]
+    next_char             = one_hot_encoding(sample_output(output, temperature=temperature), vocabulary_size)
+    next_char             = sample_sentence(model=model, vocabulary_size=vocabulary_size, temperature=temperature,
+                                         hidden_states=hidden_states, seq_len=seq_len-1, previous=next_char)
+
+    return torch.cat([next_char, next_char], dim=1)
