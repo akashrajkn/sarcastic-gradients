@@ -30,31 +30,14 @@ import torch.optim as optim
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from functools import reduce
-# from pycrayon import CrayonClient
 
 from dataset import TextDataset
 from model import TextGenerationModel
 
+from utils import one_hot, sample_output, string_from_one_hot
+
 ################################################################################
 
-def one_hot(batch, vocab_size):
-
-    X = torch.zeros(batch.shape[0], batch.shape[1], vocab_size, device=batch.device)
-    X.scatter_(2, batch[:,:,None], 1)
-
-    return X
-
-def sample_output(output, temperature=1.0):
-    # helper function to sample an index from a probability array
-
-    output = nn.functional.softmax(output, dim=1)
-
-    a = torch.log(output) / temperature
-    a = torch.exp(a) / (torch.exp(a).sum())
-
-    sample = torch.multinomial(a, 1)
-
-    return sample
 
 def sample_model(model, vocab_size, device=torch.device('cpu'), temp=1.0, hidden_states=None, n=30, prev_char=None):
 
@@ -72,21 +55,14 @@ def sample_model(model, vocab_size, device=torch.device('cpu'), temp=1.0, hidden
     output = output[:, -1, :] # last prediction
 
     # Sample next character from softmax
-    next_char = sample_output(output, temperature=temp)  # [B,1]
-    next_char = one_hot(next_char, vocab_size)           # [B,1,D]
+    next_char = sample_output(output, temperature=temp)
+    next_char = one_hot(next_char, vocab_size)
 
     # concat the recursive predictions to currect character
     future = sample_model(model, vocab_size, temp=temp, hidden_states=hidden_states, n=n-1, prev_char=next_char)
     encoded_text = torch.cat([next_char, future], dim=1)
 
     return encoded_text
-
-def string_from_one_hot(sequence, dataset):
-    char_idxs = sequence.argmax(dim=2).squeeze_(0).cpu().numpy()
-    return dataset.convert_to_string(char_idxs)
-
-def get_predictions(outputs):
-    return torch.argmax(nn.functional.softmax(outputs, dim=2), dim=2)
 
 def train(config):
 
@@ -139,7 +115,7 @@ def train(config):
 
             # compute training metrics
             loss = criterion(outputs.transpose(2, 1), Y)
-            predictions = get_predictions(outputs)
+            predictions = torch.argmax(nn.functional.softmax(outputs, dim=2), dim=2)
             accuracy = (Y == predictions).sum().item() / reduce(lambda x,y: x*y, Y.size())
 
             losses.append(loss.cpu().item())
@@ -185,13 +161,13 @@ def train(config):
 
     print('Save final model')
     torch.save(model, './models/final_model.pt')
+
     with open('./results/losses', 'wb+') as f:
         pickle.dump(losses, f)
 
     with open('./results/accuracies', 'wb+') as f:
         pickle.dump(accuracies, f)
 
-    # _ = xp.to_zip(experiment_label + ".zip")
     print('Done training.')
 
 

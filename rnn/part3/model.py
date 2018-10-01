@@ -28,25 +28,17 @@ class TextGenerationModel(nn.Module):
 
         super(TextGenerationModel, self).__init__()
 
-        # Initialize modules
-        self.lstm = nn.LSTM(input_size=vocabulary_size,
-                            hidden_size=lstm_num_hidden,
-                            num_layers=lstm_num_layers,
-                            batch_first=True)
-
-        # Learnt mapping from hidden state to num_classes
-        self.out_projection = nn.Linear(lstm_num_hidden, vocabulary_size)
-
-        # Save meta information
         self.num_layers = lstm_num_layers
         self.num_hidden = lstm_num_hidden
 
+        # Network
+        self.lstm   = nn.LSTM(input_size=vocabulary_size, hidden_size=lstm_num_hidden, num_layers=lstm_num_layers, batch_first=True)
+        self.output = nn.Linear(lstm_num_hidden, vocabulary_size)
         self.to(device)
 
-    def forward(self, x, hidden_states=None):
+    def forward(self, x, hidden=None):
 
-        # output is [B,S,directions*num_hidden], should bet [B,S,vocabulary_size]
-        out, (h,c) = self.lstm(x, hidden_states)
-        out = self.out_projection(out)
+        out, (h_n, c_n) = self.lstm(x, hidden)
+        out            = self.output(out)
 
-        return out, (h,c)
+        return out, (h_n,c_n)
