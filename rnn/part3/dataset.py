@@ -51,3 +51,7 @@ class TextDataset(data.Dataset):
     @property
     def vocab_size(self):
         return self._vocab_size
+
+    @property
+    def char_dict(self):
+        return self._char_to_ix

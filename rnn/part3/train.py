@@ -21,68 +21,169 @@ import os
 import time
 from datetime import datetime
 import argparse
+import pickle
 
 import numpy as np
 
 import torch
 import torch.optim as optim
+import torch.nn as nn
 from torch.utils.data import DataLoader
+from functools import reduce
+# from pycrayon import CrayonClient
 
-from part3.dataset import TextDataset
-from part3.model import TextGenerationModel
+from dataset import TextDataset
+from model import TextGenerationModel
 
 ################################################################################
+
+def one_hot(batch, vocab_size):
+
+    X = torch.zeros(batch.shape[0], batch.shape[1], vocab_size, device=batch.device)
+    X.scatter_(2, batch[:,:,None], 1)
+
+    return X
+
+def sample_output(output, temperature=1.0):
+    # helper function to sample an index from a probability array
+
+    output = nn.functional.softmax(output, dim=1)
+
+    a = torch.log(output) / temperature
+    a = torch.exp(a) / (torch.exp(a).sum())
+
+    sample = torch.multinomial(a, 1)
+
+    return sample
+
+def sample_model(model, vocab_size, device=torch.device('cpu'), temp=1.0, hidden_states=None, n=30, prev_char=None):
+
+    if n == 0:
+        return prev_char
+
+    # initialize sequence with random character
+    if prev_char is None:
+        # random character seed
+        prev_char = torch.empty(1, 1).random_(0, vocab_size - 1).type(torch.long)
+        # convert to one-hot
+        prev_char = one_hot(prev_char, vocab_size).to(device)
+
+    output, hidden_states = model(prev_char, hidden_states)
+    output = output[:, -1, :] # last prediction
+
+    # Sample next character from softmax
+    next_char = sample_output(output, temperature=temp)  # [B,1]
+    next_char = one_hot(next_char, vocab_size)           # [B,1,D]
+
+    # concat the recursive predictions to currect character
+    future = sample_model(model, vocab_size, temp=temp, hidden_states=hidden_states, n=n-1, prev_char=next_char)
+    encoded_text = torch.cat([next_char, future], dim=1)
+
+    return encoded_text
+
+def string_from_one_hot(sequence, dataset):
+    char_idxs = sequence.argmax(dim=2).squeeze_(0).cpu().numpy()
+    return dataset.convert_to_string(char_idxs)
+
+def get_predictions(outputs):
+    return torch.argmax(nn.functional.softmax(outputs, dim=2), dim=2)
 
 def train(config):
 
     # Initialize the device which to run the model on
-    device = torch.device(config.device)
-
-    # Initialize the model that we are going to use
-    model = TextGenerationModel( ... )  # fixme
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     # Initialize the dataset and data loader (note the +1)
-    dataset = TextDataset( ... )  # fixme
+    abs_path = os.path.abspath(config.txt_file)
+    dataset = TextDataset(abs_path, config.seq_length)
+
+    with open('./assets/dataset.pkl', 'wb+') as f:
+        pickle.dump(dataset, f)
+
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
 
+    # Initialize the model that we are going to use
+    model = TextGenerationModel(batch_size=config.batch_size,
+                                seq_length=config.seq_length,
+                                vocabulary_size=dataset.vocab_size,
+                                lstm_num_hidden=config.lstm_num_hidden,
+                                lstm_num_layers=config.lstm_num_layers,
+                                device=device)
+
+
+    experiment_label = "{}_".format(datetime.now().strftime("%Y-%m-%d %H:%M"))
+    for key, value in vars(config).items():
+        experiment_label += "{}={}_".format(key, value)
+
     # Setup the loss and optimizer
-    criterion = None  # fixme
-    optimizer = None  # fixme
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.RMSprop(model.parameters(), lr=config.learning_rate)
 
-    for step, (batch_inputs, batch_targets) in enumerate(data_loader):
+    losses = []
+    accuracies = []
+    # TODO: configure learning rate scheduler
 
-        # Only for time measurement of step through network
-        t1 = time.time()
+    for epoch in range(1, config.epochs + 1):
+        for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
-        #######################################################
-        # Add more code here ...
-        #######################################################
+            # Only for time measurement of step through network
+            t1 = time.time()
 
-        loss = np.inf   # fixme
-        accuracy = 0.0  # fixme
+            X = torch.stack(batch_inputs, dim=1)
+            X = one_hot(X, dataset.vocab_size)
+            Y = torch.stack(batch_targets, dim=1)
+            X, Y = X.to(device), Y.to(device)
 
-        # Just for time measurement
-        t2 = time.time()
-        examples_per_second = config.batch_size/float(t2-t1)
+            # forward pass
+            outputs, _ = model(X)
 
-        if step % config.print_every == 0:
+            # compute training metrics
+            loss = criterion(outputs.transpose(2, 1), Y)
+            predictions = get_predictions(outputs)
+            accuracy = (Y == predictions).sum().item() / reduce(lambda x,y: x*y, Y.size())
 
-            print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
-                  "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                    datetime.now().strftime("%Y-%m-%d %H:%M"), step,
-                    config.train_steps, config.batch_size, examples_per_second,
-                    accuracy, loss
-            ))
+            losses.append(loss.cpu().item())
+            accuracies.append(accuracy)
 
-        if step == config.sample_every:
-            # Generate some sentences by sampling from the model
-            pass
+            # backward pass
+            model.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        if step == config.train_steps:
-            # If you receive a PyTorch data-loader error, check this bug report:
-            # https://github.com/pytorch/pytorch/pull/9655
-            break
+            # clip gradients to prevent them form exploding
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
 
+            # Just for time measurement
+            t2 = time.time()
+            examples_per_second = config.batch_size/float(t2-t1)
+
+            if step % config.print_every == 0:
+
+                print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                      "Accuracy = {:.2f}, Loss = {:.3f}".format(
+                        datetime.now().strftime("%Y-%m-%d %H:%M"), epoch*step,
+                        config.train_steps, config.batch_size, examples_per_second,
+                        accuracy, loss
+                ))
+
+            if step % 1000 == 0:
+                torch.save(model, './models/seinfeld_step_{}.pt'.format(step))
+
+                with open('./results/losses', 'wb+') as f:
+                    pickle.dump(losses, f)
+
+                with open('./results/accuracies', 'wb+') as f:
+                    pickle.dump(accuracies, f)
+
+    print('Save final model')
+    torch.save(model, './models/final_model.pt')
+    with open('./results/losses', 'wb+') as f:
+        pickle.dump(losses, f)
+
+    with open('./results/accuracies', 'wb+') as f:
+        pickle.dump(accuracies, f)
+
+    # _ = xp.to_zip(experiment_label + ".zip")
     print('Done training.')
 
 
@@ -109,15 +210,34 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate_step', type=int, default=5000, help='Learning rate step')
     parser.add_argument('--dropout_keep_prob', type=float, default=1.0, help='Dropout keep probability')
 
-    parser.add_argument('--train_steps', type=int, default=1e6, help='Number of training steps')
+    parser.add_argument('--train_steps', type=int, default=int(1e6), help='Number of training steps')
+    parser.add_argument('--epochs', type=int, default=int(10), help='Number of training steps')
     parser.add_argument('--max_norm', type=float, default=5.0, help='--')
 
     # Misc params
     parser.add_argument('--summary_path', type=str, default="./summaries/", help='Output path for summaries')
     parser.add_argument('--print_every', type=int, default=5, help='How often to print training progress')
     parser.add_argument('--sample_every', type=int, default=100, help='How often to sample from the model')
+    parser.add_argument('--temperature', type=float, default=1.0, help='Energy of the probability distribution')
+    parser.add_argument('--generate_n', type=int, default=30, help='Length of string to generate')
 
     config = parser.parse_args()
 
     # Train the model
+    print('Train model')
     train(config)
+
+    print("-"*20)
+    print('generate Sentences')
+
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model = torch.load('./models/final_model.pt')
+
+    with open('./assets/dataset.pkl', 'rb') as f:
+        dataset = pickle.load(f)
+
+    text = sample_model(model=model, vocab_size=dataset.vocab_size=, device=device, temp=1)
+    generated = string_from_one_hot(text, dataset)
+
+    with open('./results/generated.txt', 'a') as f:
+        f.write(generated)
