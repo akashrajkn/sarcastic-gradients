@@ -58,7 +58,7 @@ def train(config):
 
     # Setup the loss and optimizer
     criterion   = nn.CrossEntropyLoss()
-    optimizer   = torch.optim.RMSprop(model.parameters())
+    optimizer   = torch.optim.RMSprop(model.parameters(), lr=config.learning_rate)
 
     losses      = []
     accuracies  = []

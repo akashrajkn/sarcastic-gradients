@@ -69,7 +69,7 @@ class LSTM(nn.Module):
             o_t         = torch.sigmoid(torch.matmul(x_t, self.W_xo) + torch.matmul(h, self.W_ho) + self.b_o)
 
             # new cell state
-            c = torch.mul(g_t, i_t) + torch.mul(c_t, f_t)
+            c = torch.mul(g_t, i_t) + torch.mul(c, f_t)
             h = torch.mul(torch.tanh(c), o_t)
 
         return torch.matmul(h, self.W_hp) + self.b_p
